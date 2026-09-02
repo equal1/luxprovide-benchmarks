@@ -58,4 +58,3 @@ uv run pytest tests/test_width_scan.py --simulator aer_sv_gpu \
     --max-width 12 --shots 4000 \
     --eq1-db results/scan.jsonl --eq1-resume
 ```
-\
