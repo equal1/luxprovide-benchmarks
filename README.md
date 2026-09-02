@@ -18,9 +18,6 @@ fidelity against the exact answer, and places it on a volumetric grid of width
 against compiled depth (the framework is arXiv:2110.03137's). A full sweep runs
 for hours, and is restartable.
 
-Both files carry a long module docstring covering methodology, the cost of
-scaling a run up, and what each number does and does not mean. Read those before
-reading a result off a report.
 
 ## Requirements
 
@@ -61,45 +58,4 @@ uv run pytest tests/test_width_scan.py --simulator aer_sv_gpu \
     --max-width 12 --shots 4000 \
     --eq1-db results/scan.jsonl --eq1-resume
 ```
-
-Each session writes an HTML report and, beside it, a run database: one JSON
-object per line carrying every run's placement, params, rendered data and — under
-`raw` — the measured and reference distributions the plots were drawn from. The
-report is a picture; the database is what a different fidelity measure or a
-differently drawn plot needs later, and none of it can be recovered from a
-finished report. Name the database with `--eq1-db` to keep it, since the default
-one is overwritten by the next run in the same directory.
-
-`--eq1-resume` replays what a previous run of the same command finished, so a
-sweep killed by walltime loses only the width it was in the middle of. It is
-harmless on a first run, which makes the two commands one command.
-
-Options: `--simulator` (engine, default `aer_sv_cpu`), `--shots`, `--max-width`
-(width scan only, default 6). Cost is roughly shots × 2^width, so raise them
-together with care.
-
-## Offline tooling
-
-`scripts/plot_results.py` redraws both benchmarks from files of shot counts —
-stdlib and matplotlib only, no qiskit, no circuits rebuilt. It is how a finished
-run gets replotted without rerunning it.
-
-```
-python3 scripts/plot_results.py --results-dir results/ --out plots/
-```
-
-Volumetric grids additionally need compiled depths, which counts do not carry;
-`--depths` takes either a JSON mapping or a directory of the submitted `.qasm`.
-
-`scripts/dump_width_scan_circuits.py` writes exactly that directory — one file
-per `<device>-<algorithm>-<width>q` — building the circuits in-process against
-fake backends, so it needs no server.
-
-## Rebuilding a report
-
-```
-python3 -m eq1val.report results/scan.jsonl --out report.html
-```
-
-A pure re-render from the run database: same tree, same pages, no reruns and no
-figures regenerated.
+\
