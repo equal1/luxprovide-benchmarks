@@ -1,0 +1,34 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+.pytest_cache/
+.ruff_cache/
+
+# Virtual environments
+.venv
+
+# Local environment/secrets
+.env
+
+# Run outputs: reports, the run database written alongside each of them, and
+# anything redrawn from either. Generated per run, never committed.
+*-report.html
+report.html
+*.jsonl
+*.jsonl.gz
+*.parquet
+_site/
+reports/
+results/
+plots/
+
+# Circuits dumped by scripts/dump_width_scan_circuits.py
+data/width-scan-circuits/
+
+# Editors
+.vs/
+.vscode/
