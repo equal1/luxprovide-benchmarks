@@ -13,7 +13,7 @@ dependencies = [
 ]
 
 [tool.uv.sources]
-eq1val = { git = "ssh://git@github.com/equal1/equal1-device-validation.git", rev = "b31dde22305602db3959c6d32be2e038a8860cd2" }
+eq1val = { git = "ssh://git@github.com/equal1/equal1-device-validation.git", rev = "db660ef92fdff9d8b9c45edf1ae55c0decfcea8a" }
 
 [dependency-groups]
 dev = ["ruff", "mypy"]
@@ -22,4 +22,4 @@ dev = ["ruff", "mypy"]
 testpaths = ["tests"]
 markers = [
     "opt_in: only runs when its file is named on the command line (or -m opt_in)",
-]
+] 
