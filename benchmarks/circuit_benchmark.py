@@ -16,33 +16,20 @@ from qiskit.result import marginal_distribution
 
 from .experiment import Counts, Experiment
 
-# The two series a measured-vs-ideal plot draws, from the validated categorical
-# palette (slots 1 and 2): far enough apart to stay distinct under the common
-# colour-vision deficiencies, not just to a normal-vision reader.
+
 MEASURED_COLOR = "#2a78d6"
 IDEAL_COLOR = "#eb6834"
 
-# The reference is drawn as a tinted pane rather than a solid bar: at full
-# strength two saturated hues fight each other for a comparison that is
-# supposed to read at a glance. The fill carries the shape, the outline keeps
-# the edge crisp where the tint alone would wash out.
 IDEAL_FILL_ALPHA = 0.22
 IDEAL_EDGE_ALPHA = 0.9
 MEASURED_FILL_ALPHA = 0.92
 
-# Surface and inks. The off-white ground is easier to sit next to a report's
-# text than paper white, and the two greys keep labels legible without pulling
-# attention off the bars.
 SURFACE_COLOR = "#fcfcfb"
-# TEXT_PRIMARY = "#0b0b0b"
 TEXT_PRIMARY = "#000000"
-# TEXT_SECONDARY = "#52514e"
 TEXT_SECONDARY = "#000000"
 GRID_COLOR = "#e7e6e1"
 AXIS_COLOR = "#d9d8d4"
 
-# The two bars of one outcome share an x position, so it is the widths that
-# tell them apart: the reference behind, the measurement in front of it.
 IDEAL_BAR_WIDTH = 0.78
 MEASURED_BAR_WIDTH = 0.40
 
@@ -81,8 +68,6 @@ def ideal_distribution(circuit: QuantumCircuit) -> Counts:
 
     bare = circuit.remove_final_measurements(inplace=False)
     probabilities = Statevector(bare).probabilities_dict()
-    # `indices` is read positionally: entry i names the qubit whose value lands
-    # in bit i of the output key, which is exactly clbit order.
     return marginal_distribution(
         probabilities, indices=[clbit_to_qubit[c] for c in sorted(clbit_to_qubit)]
     )
@@ -143,8 +128,6 @@ def align_to_ideal(distribution: Counts, circuit: QuantumCircuit) -> Counts:
     wanted = sorted(measured_clbits(circuit))
     aligned: Counts = {}
     for key, value in distribution.items():
-        # One character per clbit, most significant (highest index) leftmost,
-        # so clbit i sits at -(i + 1).
         bits = key.replace(" ", "")
         if len(bits) <= wanted[-1]:
             raise ValueError(
@@ -226,16 +209,11 @@ def plot_measured_vs_ideal(
     )
 
     ax.set_xticks(positions)
-    # Monospaced: bitstrings are read column by column, and a proportional face
-    # puts the same bit at a different offset on every label.
     ax.set_xticklabels(states, rotation=90, family="monospace", fontsize=8.5)
     ax.set_xlim(-0.7, len(states) - 0.3)
     ax.set_ylabel("Probability", fontsize=9, color=TEXT_SECONDARY, labelpad=8)
     ax.set_xlabel("Outcome", fontsize=9, color=TEXT_SECONDARY, labelpad=6)
 
-    # A header row rather than a centred title block: the name on the left, the
-    # legend on the right, both clear of the bars.
-    # ax.set_title(name, loc="left", fontsize=11, color=TEXT_PRIMARY, pad=26)
     if note is not None:
         ax.text(
             0.0,
@@ -259,8 +237,6 @@ def plot_measured_vs_ideal(
         columnspacing=1.4,
     )
 
-    # Recessive frame: one set of horizontal rules behind the bars, a baseline
-    # under them, and nothing else -- the two bars carry the comparison.
     ax.grid(axis="y", color=GRID_COLOR, linewidth=0.8)
     ax.set_axisbelow(True)
     for side in ("top", "right", "left"):
@@ -306,8 +282,6 @@ class CircuitBenchmark(Experiment):
         self.client_side_transpile = True
         self.transpile_optimization_level = optimization_level
         self.distribution: Optional[Counts] = None
-        # Per-stage timings the server recorded for the last run(); empty until
-        # then, and empty if the server did not report any.
         self.metrics: dict[str, float] = {}
 
     @override
@@ -329,8 +303,6 @@ class CircuitBenchmark(Experiment):
         assert self.circuits is not None
         self.flush_results()
         self.start_job(**kwargs)
-        # collect_results() drains _active_jobs, so read the id while the job is
-        # still queued -- the metrics are fetched with it afterwards.
         job_id = self._active_jobs[-1].job_id()
         self.collect_results()
         self.metrics = self._fetch_execution_metrics(job_id)

@@ -23,17 +23,9 @@ from qiskit.quantum_info import Statevector
 
 from .experiment import Experiment
 
-# Heavy outputs are those above the median of the ideal distribution; HOG passes
-# a width/depth point when at least this fraction of shots land on one.
-# arXiv:1612.05903 (HOG), arXiv:1811.12926 sec. "Validating quantum computers", eq. 6.
+
 HEAVY_OUTPUT_THRESHOLD = 2 / 3
-
-# arXiv:1811.12926 sec. III.A: the heavy output probability of an ideal random
-# circuit converges to this value as circuit size grows, plotted as a reference line.
 ASYMPTOTIC_IDEAL_HEAVY_OUTPUT_PROBABILITY = (1 + math.log(2)) / 2
-
-# Minimum number of independently sampled circuits per (width, depth) point.
-# TODO: update this back once flow is tested
 MIN_REPLICATES = 10
 
 
@@ -114,9 +106,6 @@ def plot_quantum_volume_existing_results(
         _parse_size_key(key): fraction
         for key, fraction in result.data["heavy_output_fractions"].items()
     }
-    # Not stored in the database: recovered as the largest circuit size any
-    # attempted point touches, which is all `plot_quantum_volume` needs to
-    # know which square points to plot.
     max_size = max(max(width, depth) for width, depth in heavy_output_fractions)
     return plot_quantum_volume(
         heavy_output_fractions,
@@ -232,10 +221,7 @@ class QuantumVolumeBenchmark(Experiment):
         self.heavy_output_fractions: dict[tuple[int, int], float] = {}
         self.quantum_volume: Optional[int] = None
         self.log2_quantum_volume: Optional[int] = None
-        # Ideal heavy outputs for whichever (width, depth) batch is currently held in
-        # `self.circuits` -- both are always written together by `generate_circuits()`.
         self.heavy_sets: Optional[list[frozenset[str]]] = None
-        # `generate_circuits()` already transpiles (see below), so `start_job()` must not.
         self.client_side_transpile = False
 
     @override
@@ -401,9 +387,6 @@ class QuantumVolumeBenchmark(Experiment):
             )
 
         if not (passed and next_depth <= self.max_depth):
-            # Either the test failed (the next batch prepared above is discarded --
-            # wasted work, but acceptable) or the sweep is done -- force the next
-            # width to generate fresh circuits instead of reusing stale ones.
             self.circuits = None
             self.heavy_sets = None
 

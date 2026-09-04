@@ -953,6 +953,7 @@ dependencies = [
     { name = "mqt-bench" },
     { name = "pytest" },
     { name = "qiskit" },
+    { name = "ruff" },
 ]
 
 [package.dev-dependencies]
@@ -968,6 +969,7 @@ requires-dist = [
     { name = "mqt-bench", specifier = ">=2.2.3" },
     { name = "pytest", specifier = ">=8.0" },
     { name = "qiskit", specifier = ">=2.4.2" },
+    { name = "ruff", specifier = ">=0.16.5" },
 ]
 
 [package.metadata.requires-dev]

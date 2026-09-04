@@ -43,28 +43,13 @@ class Experiment(ABC):
 
     _provider: Eq1QiskitProvider
     _device: Optional[Eq1BackendBase]
-    # the remote simulator to use
-    # if None, will assume device is a real QPU
-    # a `Simulator` (via select_simulator)
     _simulator: Optional[Simulator]
     shots: int | None
     circuits: list[QuantumCircuit] | QuantumCircuit
-    # Whether `start_job()` compiles circuits locally before submitting them.
-    # Set to False to submit the logical circuit as-is and let the server own
-    # compilation -- needed for backends that ignore `enable_compilation` and
-    # would otherwise compile an already-compiled circuit a second time.
     client_side_transpile: bool
-    # `optimization_level` handed to the backend's `default_transpile()` when
-    # compiling client-side. Ignored when `client_side_transpile` is False.
-    transpile_optimization_level: int
-    # The circuits as last submitted by `start_job()` -- i.e. after client-side
-    # compilation, when it is enabled. None until the first submission.
+    transpile_optimization_level: InterruptedError
     submitted_circuits: Optional[list[QuantumCircuit] | QuantumCircuit]
-    # buffer of jobs sent to device, in submission order
     _active_jobs: list[Eq1Job]
-    # results is a list where each element is the result of a job submitted during the experiment
-    # each job may yield one or multiple Counts
-    # the list preserves submission order
     _results: list[Counts | list[Counts]]
 
     def __init__(
@@ -149,32 +134,6 @@ class Experiment(ABC):
         options (e.g. `optimization_level`). See the examples below for the
         common workflow shapes.
         """
-        # Implement experiment workflow here
-
-        # For example, a linear workflow in which circuits are generated inside __init__ would look like:
-        # assert self.circuits is not None
-        # self.flush_results()
-        # self.start_job(**kwargs)
-        # self.collect_results()
-
-        # A workflow loop which runs multiple independent circuits would look like:
-        # self.flush_results()
-        # while condition:
-        #     self.generate_circuits()
-        #     self.start_job()
-        # self.collect_results()
-
-        # A workflow loop which generates each circuit depending on the previous one's results
-        # would look like the linear example wrapped inside a loop.
-        # while condition:
-        #     - some classical computations with self._results -
-        #     circuits = self.generate_circuits()
-        #     self.start_job(circuits)
-        #     self.collect_results()
-
-        # If the experiment workflow generates multiple circuits,
-        # consider returning the circuit when implementing self.generate_circuits() instead of writing to self.circuits
-        # and passing it as argument in self.start_job() in the workflow
         pass
 
     def start_job(
@@ -272,8 +231,6 @@ class Experiment(ABC):
         counts = result.get_counts()
 
         if as_probabilities:
-            # normalise by each circuit's own total counts so probabilities are
-            # self-consistent regardless of how many shots the backend actually ran
             if isinstance(counts, list):
                 counts = [self._convert_to_probabilities(c) for c in counts]
             else:

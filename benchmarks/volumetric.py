@@ -295,8 +295,6 @@ def plot_volumetric(
     if not cells:
         raise ValueError("plot_volumetric needs at least one cell to place")
 
-    # The lattice may extend past the data -- that is its job -- so the axis is
-    # sized to whichever reaches further.
     w_data = max(cell.width for cell in cells)
     d_data = max(cell.depth for cell in cells)
     max_width = max(w_data, device_qubits or 0)
@@ -335,19 +333,14 @@ def plot_volumetric(
     )
 
     anchors: list[tuple[float, float, str]] = []
-    # Every occupied position, kept so labels can be lifted clear of cells
-    # belonging to other series as well as their own.
+
     occupied: list[tuple[float, float]] = []
     for label, group in series.items():
         placed = [cell for cell in group if cell.fidelity is not None]
-        # Widest first, so a wider cell never hides a narrower one.
         for cell in sorted(placed, key=lambda c: (-c.width, -c.depth)):
             x = depth_index(cell.depth)
-            # Clamped, because a device can land below uniform and the ramp has
-            # nowhere to put a negative.
+
             fidelity = min(max(cell.fidelity or 0.0, 0.0), 1.0)
-            # The top of the ramp is reserved: 0.95 rather than 1.0 keeps the
-            # darkest end of Spectral out of the data, where it reads as ink.
             color = cmap(fidelity * 0.95)
             ax.add_patch(_cell_patch(x, cell.width, color))
             occupied.append((x, float(cell.width)))
@@ -363,8 +356,6 @@ def plot_volumetric(
                     zorder=4,
                 )
 
-        # A shape that was attempted and produced no number: marked, not shaded,
-        # because "we could not measure this" is not a fidelity of zero.
         for cell in group:
             if cell.fidelity is None:
                 ax.plot(
@@ -381,8 +372,6 @@ def plot_volumetric(
             widest = max(placed, key=lambda c: (c.width, c.depth))
             anchors.append((depth_index(widest.depth), float(widest.width), label))
 
-    # Headroom is set last, from what the labels actually needed: reserving it
-    # up front would leave a band of empty plot whenever they needed less.
     label_top = _annotate(ax, anchors, occupied) if annotate else 0.0
     ax.set_ylim(0, max(max_width + 1.5, label_top + 1.0))
 
