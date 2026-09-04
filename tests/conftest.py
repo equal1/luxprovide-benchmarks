@@ -8,68 +8,57 @@ import urllib.request
 from pathlib import Path
 
 import pytest
+from eq1_biskit import Eq1QiskitProvider
+from eq1client import Eq1Client
+
+from config import CLIENT_TIMEOUT_S, DEVICES, SERVER_HOST, SERVER_PORT, SERVER_URL
 
 logger = logging.getLogger(__name__)
 
-EQ1_SERVER_HOST = "0.0.0.0"
-EQ1_SERVER_PORT = 62123
-EQ1_SERVER_STARTUP_TIMEOUT = 180
+SERVER_STARTUP_TIMEOUT = 180
 
-# eq1server declares the qiskit-aer build as a pair of conflicting extras
-# (see its pyproject: `eq1rt-cpu` vs `eq1rt-gpu`). Its default `dev` group
-# depends on `eq1_server[all]`, which pulls `eq1rt-cpu`, so a bare `uv run`
-# resolves to the CPU wheel and *uninstalls* the GPU one if it was there.
-# The extra therefore has to be passed explicitly on every run.
-EQ1_SERVER_CPU_EXTRA = "sim-cpu"
-EQ1_SERVER_GPU_EXTRA = "sim-gpu"
+# eq1server declares the qiskit-aer build as a pair of conflicting extras, and
+# its default dev group pulls the CPU one -- so a bare `uv run` uninstalls the
+# GPU wheel if it was there. The extra has to be passed explicitly every time.
+SERVER_CPU_EXTRA = "sim-cpu"
+SERVER_GPU_EXTRA = "sim-gpu"
 
 # Tests carrying this marker are skipped by a plain `pytest tests` run and only
-# execute when their file is named on the command line (see
-# `_explicitly_requested`). For runs too expensive to be part of the default suite.
+# execute when their file is named on the command line.
 OPT_IN_MARKER = "opt_in"
 
 
 def pytest_addoption(parser):
-    # Defaults keep a run cheap and CPU-only; override them to scale it up.
     parser.addoption(
         "--simulator",
         default="aer_sv_cpu",
-        help=(
-            "remote simulator engine to run against (default: aer_sv_cpu; use "
-            "aer_sv_gpu or aer_tn_gpu on a CUDA machine — the server is synced "
-            "with the matching extra automatically)"
-        ),
+        help="remote simulator engine (default: aer_sv_cpu; aer_sv_gpu or aer_tn_gpu need CUDA)",
     )
     parser.addoption(
         "--shots",
         type=int,
         default=None,
-        help=(
-            "shots per circuit (default: whatever the experiment itself asks "
-            "for -- 10000 for the algorithm circuits, 1000 for the width scan). "
-            "Noisy runs cost one full trajectory per shot, so lower this well "
-            "before scaling --qubits or --max-width up"
-        ),
+        help="shots per circuit (default: 10000 algorithms, 1000 width scan, 100 quantum volume)",
     )
     parser.addoption(
         "--max-width",
         type=int,
         default=None,
-        help=(
-            "widest register the width scan (tests/test_width_scan.py) "
-            "sweeps up to, inclusive (default: 6). Each extra qubit roughly "
-            "doubles the work, so the widest few runs dominate the cost"
-        ),
+        help="widest register swept, inclusive (default: 6 width scan, 4 quantum volume, where it caps depth too)",
+    )
+    parser.addoption(
+        "--replicates",
+        type=int,
+        default=None,
+        help="circuits sampled per quantum volume (width, depth) point (default: 100, minimum 10)",
     )
 
 
 def _explicitly_requested(config, item) -> bool:
     """Whether `item` was named on the command line rather than swept up by a directory.
 
-    `pytest tests` collects a directory, `pytest tests/test_width_scan.py`
-    (or `...::test_width`) names the file itself -- only the latter counts as
-    asking for an opt-in test. Selecting the marker by hand (`-m opt_in`) counts
-    too.
+    `pytest tests` collects a directory; `pytest tests/test_width_scan.py` names
+    the file itself, and only that counts as asking for an opt-in test.
     """
     if OPT_IN_MARKER in (config.getoption("-m") or ""):
         return True
@@ -90,23 +79,35 @@ def pytest_collection_modifyitems(config, items):
             item.add_marker(skip_opt_in)
 
 
-def _server_path() -> Path:
-    """Where the simulator server checkout lives, or should be cloned to.
+@pytest.fixture(scope="module")
+def provider():
+    return Eq1QiskitProvider(client=Eq1Client(SERVER_URL, timeout=CLIENT_TIMEOUT_S))
 
-    `EQ1_SERVER_PATH` names it outright; otherwise it is a sibling of this
-    repository, which is where a clone started by this fixture ends up.
+
+@pytest.fixture(scope="module")
+def backends(provider) -> dict[str, object]:
+    """Every device's backend, or the reason it could not be built.
+
+    A device that cannot be reached yields its error message instead of a
+    backend, so one dead device skips its own cases rather than the session.
     """
+    built: dict[str, object] = {}
+    for label, device_id in DEVICES.items():
+        try:
+            built[label] = provider.get_backend(f"fake-{device_id}")
+        except Exception as exc:
+            built[label] = f"device unavailable: {type(exc).__name__}: {exc}"
+    return built
+
+
+def _server_path() -> Path:
+    """Where the simulator server checkout lives, or should be cloned to."""
     if env_path := os.environ.get("EQ1_SERVER_PATH"):
         return Path(env_path)
     return Path(__file__).resolve().parents[2] / "simulator-server"
 
 
 def _server_branch() -> str:
-    """Branch of the simulator server to clone.
-
-    Required rather than defaulted: this file names no repository, so the
-    branch has to come from the environment along with the URL.
-    """
     branch = os.environ.get("EQ1_SERVER_BRANCH")
     if not branch:
         raise RuntimeError(
@@ -117,12 +118,6 @@ def _server_branch() -> str:
 
 
 def _server_repo() -> str:
-    """Clone URL for the simulator server.
-
-    Required rather than defaulted, so the URL lives in the environment and not
-    in this file. Either the ssh:// or the https:// form works, depending on how
-    the host authenticates to GitHub.
-    """
     repo = os.environ.get("EQ1_SERVER_REPO")
     if not repo:
         raise RuntimeError(
@@ -133,16 +128,12 @@ def _server_repo() -> str:
 
 
 def _server_extra(simulator: str) -> str:
-    """Pick the eq1server extra that matches the simulator engine under test.
-
-    `EQ1_SERVER_EXTRA` overrides the choice, for the case where the server has
-    to be built differently from what the engine name suggests.
-    """
+    """The eq1server extra matching the engine under test, unless overridden."""
     if env_extra := os.environ.get("EQ1_SERVER_EXTRA"):
         return env_extra
     if simulator.endswith("_gpu"):
-        return EQ1_SERVER_GPU_EXTRA
-    return EQ1_SERVER_CPU_EXTRA
+        return SERVER_GPU_EXTRA
+    return SERVER_CPU_EXTRA
 
 
 def _is_listening(host: str, port: int) -> bool:
@@ -184,8 +175,10 @@ def _kill_existing_server(host: str, port: int, timeout: float = 10) -> None:
 
 @pytest.fixture(scope="session", autouse=True)
 def server(pytestconfig):
-    # EQ1_SERVER_URL points every test's `SERVER_URL` at an already-running
-    # server (local or remote), so skip cloning/building/starting our own.
+    """Clone, build and run a simulator server for the session.
+
+    Does nothing when EQ1_SERVER_URL already points at one.
+    """
     if os.environ.get("EQ1_SERVER_URL"):
         logger.info(
             "EQ1_SERVER_URL=%s set, skipping local eq1-server startup",
@@ -194,7 +187,7 @@ def server(pytestconfig):
         yield
         return
 
-    _kill_existing_server(EQ1_SERVER_HOST, EQ1_SERVER_PORT)
+    _kill_existing_server(SERVER_HOST, SERVER_PORT)
 
     server_path = _server_path()
     branch = _server_branch()
@@ -232,8 +225,8 @@ def server(pytestconfig):
         )
         logger.info("clone complete")
     else:
-        # An existing checkout is used as-is; it is never fetched or switched,
-        # so log which branch it is actually on rather than the one requested.
+        # An existing checkout is used as-is, never fetched or switched, so log
+        # the branch it is actually on rather than the one requested.
         current = subprocess.run(
             ["git", "-C", str(server_path), "rev-parse", "--abbrev-ref", "HEAD"],
             capture_output=True,
@@ -249,9 +242,9 @@ def server(pytestconfig):
 
     extra = _server_extra(pytestconfig.getoption("--simulator"))
     logger.info("syncing eq1-server dependencies with the %s extra", extra)
-    # Done as its own step rather than left to `uv run`: pulling the CUDA
-    # wheels can take minutes, which would otherwise eat into the readiness
-    # timeout below and surface as a spurious "server did not start".
+    # Its own step rather than left to `uv run`: pulling the CUDA wheels can
+    # take minutes, which would otherwise eat into the readiness timeout below
+    # and surface as a spurious "server did not start".
     subprocess.run(
         ["uv", "sync", "--project", str(server_path), "--extra", extra],
         cwd=server_path,
@@ -261,8 +254,8 @@ def server(pytestconfig):
     log_path = server_path / "server.log"
     logger.info(
         "starting eq1-server on %s:%s with the %s extra (logging to %s)",
-        EQ1_SERVER_HOST,
-        EQ1_SERVER_PORT,
+        SERVER_HOST,
+        SERVER_PORT,
         extra,
         log_path,
     )
@@ -279,7 +272,7 @@ def server(pytestconfig):
                 "-m",
                 "eq1_server.simulator_launcher",
                 "--port",
-                str(EQ1_SERVER_PORT),
+                str(SERVER_PORT),
             ],
             cwd=server_path,
             stdout=log_file,
@@ -289,10 +282,9 @@ def server(pytestconfig):
 
     try:
         logger.info(
-            "waiting up to %ss for eq1-server to become ready",
-            EQ1_SERVER_STARTUP_TIMEOUT,
+            "waiting up to %ss for eq1-server to become ready", SERVER_STARTUP_TIMEOUT
         )
-        _wait_until_ready(EQ1_SERVER_HOST, EQ1_SERVER_PORT, EQ1_SERVER_STARTUP_TIMEOUT)
+        _wait_until_ready(SERVER_HOST, SERVER_PORT, SERVER_STARTUP_TIMEOUT)
         yield
     finally:
         logger.info("terminating eq1-server process (pid %s)", proc.pid)

@@ -1,13 +1,9 @@
 """OpenQASM sources for the LuxProvide benchmark circuits.
 
-The four algorithms at the widths the spec names, held as source rather than
-loaded from disk so a run needs nothing but the installed package. Each is the
-target-independent output of MQT Bench ([MQTb23], arXiv:2204.13719) --
-verbatim, including the unused `creg c[...]` the QFT circuits declare and the
-unmeasured `psi` ancilla QPE carries, since both change what comes back and
-editing them would make these something other than the published benchmarks.
-
-Widths not listed here are generated on the fly instead; see test_width_scan.py.
+Verbatim target-independent output of MQT Bench (arXiv:2204.13719), including
+the unused `creg c[...]` the QFT circuits declare and the unmeasured `psi`
+ancilla QPE carries: both change what comes back, so editing them would make
+these something other than the published benchmarks.
 """
 
 from qiskit import QuantumCircuit, qasm2
@@ -606,8 +602,8 @@ CIRCUITS: dict[tuple[str, int], str] = {
 def load(algorithm: str, width: int) -> QuantumCircuit:
     """Parse the stored source for one (algorithm, width) pair.
 
-    `LEGACY_CUSTOM_INSTRUCTIONS` is needed because MQT emits the `u1`/`u2`
-    forms, which qiskit no longer parses by default.
+    LEGACY_CUSTOM_INSTRUCTIONS is needed because MQT emits the `u1`/`u2` forms,
+    which qiskit no longer parses by default.
     """
     return qasm2.loads(
         CIRCUITS[(algorithm, width)],

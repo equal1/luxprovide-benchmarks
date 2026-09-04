@@ -1,15 +1,6 @@
-import os
-
+import eq1val
 import matplotlib.pyplot as plt
 import pytest
-
-from circuits import CIRCUITS, load
-from eq1_biskit import Eq1QiskitProvider
-from eq1client import Eq1Client
-from mqt.bench import BenchmarkLevel, get_benchmark
-from qiskit import QuantumCircuit
-
-import eq1val
 from eq1bench.algorithms.circuit_benchmark import (
     CircuitBenchmark,
     align_to_ideal,
@@ -17,22 +8,20 @@ from eq1bench.algorithms.circuit_benchmark import (
     ideal_distribution,
     plot_measured_vs_ideal,
 )
+from mqt.bench import BenchmarkLevel, get_benchmark
+from qiskit import QuantumCircuit
+
+from circuits import CIRCUITS, load
+from config import DEVICES
 
 pytestmark = pytest.mark.opt_in
 
-SERVER_URL = "http://0.0.0.0:62123"
-CLIENT_TIMEOUT_S = 60 * 60
 DEFAULT_SHOTS = 10000
 MAX_RAW_ENTRIES = 4096
 OPTIMIZATION_LEVEL = 1
 OPTIMIZATION_LEVEL_OVERRIDES = {"B-3.1": 0}
 
-DEVICES = {
-    "Device-Ref": os.environ.get("EQ1_DEVICE_REF", "device-ref"),
-    "Device-1": os.environ.get("EQ1_DEVICE_1", "device-1"),
-    "Device-2": os.environ.get("EQ1_DEVICE_2", "device-2"),
-}
-
+# (task, algorithm, device, widths) -- the grid the spec names.
 GRID = [
     ("B-1.1", "ghz", "Device-Ref", [3]),
     ("B-1.3", "ghz", "Device-1", [3, 10, 12]),
@@ -50,6 +39,8 @@ GRID = [
 
 FAMILIES = {"GHZ": "ghz", "QFT": "qft", "QPE": "qpe", "Grover": "grover"}
 MQT_NAMES = {"ghz": "ghz", "qft": "qft", "qpe": "qpeexact", "grover": "grover"}
+
+# Grid cells with no stored circuit, generated from MQT Bench instead.
 GENERATED = {("ghz", 12)}
 
 TASKS = {
@@ -62,7 +53,7 @@ WIDTHS = sorted({width for _, _, _, widths in GRID for width in widths})
 
 
 def circuit_for(algorithm: str, width: int) -> QuantumCircuit:
-    """The stored circuit, or MQT Bench output if there is no stored source.
+    """The stored circuit, or MQT Bench output where none is stored.
 
     Same origin either way: the stored sources are themselves verbatim MQT
     Bench output at the target-independent level.
@@ -74,11 +65,6 @@ def circuit_for(algorithm: str, width: int) -> QuantumCircuit:
         level=BenchmarkLevel.INDEP,
         circuit_size=width,
     )
-
-
-@pytest.fixture(scope="module")
-def provider():
-    return Eq1QiskitProvider(client=Eq1Client(SERVER_URL, timeout=CLIENT_TIMEOUT_S))
 
 
 @eq1val.category("LuxProvide")

@@ -26,9 +26,6 @@ reports/
 results/
 plots/
 
-# Circuits dumped by scripts/dump_width_scan_circuits.py
-data/width-scan-circuits/
-
 # Editors
 .vs/
 .vscode/
