@@ -20,9 +20,13 @@ dev = ["ruff", "mypy"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["."]
 markers = [
     "opt_in: only runs when its file is named on the command line (or -m opt_in)",
 ] 
 
+[tool.ruff]
+extend-exclude = ["benchmarks"]
+
 [tool.ruff.lint.isort]
-known-first-party = ["circuits", "config"]
+known-first-party = ["benchmarks", "circuits", "config"]

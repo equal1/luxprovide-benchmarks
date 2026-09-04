@@ -23,13 +23,26 @@ it asserts something — the run fails below `MIN_EXPECTED_QUANTUM_VOLUME`. Each
 width is reported as it finishes, so a sweep cut short still leaves behind
 everything it measured.
 
+## Benchmark code
+
+The machinery the suites run on lives in `benchmarks/`:
+
+| Module | Contains |
+| --- | --- |
+| `benchmarks/experiment.py` | `Experiment`, the base class of both benchmarks: device and simulator selection, job submission, polling, counts to probabilities. |
+| `benchmarks/circuit_benchmark.py` | `CircuitBenchmark`, plus the exact reference distribution (`ideal_distribution`), key alignment, classical fidelity and the measured-vs-ideal plot. |
+| `benchmarks/quantum_volume_benchmark.py` | `QuantumVolumeBenchmark`: the width/depth sweep, heavy output generation scoring and the `V_Q` plot. |
+| `benchmarks/volumetric.py` | The volumetric grid `tests/test_width_scan.py` plots onto. |
+
+
 ## Requirements
 
-`eq1val` and `eq1bench` ship in one wheel from Equal1's private validation
-repository, and pull `eq1-biskit` and `eq1client` transitively. **Resolving this
-project therefore needs credentials for that repository**, and running it also
-needs access to a simulator server. Without both, the code here can be read but
-not run.
+Vendoring the benchmarks does not make this project self-contained. The
+transport underneath is still `eq1-biskit`, and the suites report through
+`eq1val`; both ship in one wheel from Equal1's private validation repository,
+which also pulls `eq1client` transitively. **Resolving this project therefore
+needs credentials for that repository**, and running it also needs access to a
+simulator server. Without both, the code here can be read but not run.
 
 ```
 uv sync

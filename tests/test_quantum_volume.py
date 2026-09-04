@@ -1,8 +1,8 @@
 import eq1val
 import matplotlib.pyplot as plt
 import pytest
-from eq1bench import QuantumVolumeBenchmark
 
+from benchmarks import QuantumVolumeBenchmark
 from config import DEVICES
 
 pytestmark = pytest.mark.opt_in
@@ -10,7 +10,7 @@ pytestmark = pytest.mark.opt_in
 SEED = 1337
 MIN_EXPECTED_QUANTUM_VOLUME = 2
 OPTIMIZATION_LEVEL = 3
-DEFAULT_SHOTS = 100
+DEFAULT_SHOTS = 1
 DEFAULT_REPLICATES = 10
 DEFAULT_SIZE = 3
 

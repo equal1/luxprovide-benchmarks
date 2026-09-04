@@ -1,12 +1,12 @@
 import eq1val
 import pytest
-from eq1bench.algorithms.circuit_benchmark import CircuitBenchmark, ideal_distribution
-from eq1bench.volumetric import Cell, plot_volumetric
 from matplotlib import pyplot as plt
 from mqt.bench import BenchmarkLevel, get_benchmark
 from qiskit import QuantumCircuit
 from qiskit.quantum_info import hellinger_fidelity
 
+from benchmarks.circuit_benchmark import CircuitBenchmark, ideal_distribution
+from benchmarks.volumetric import Cell, plot_volumetric
 from config import DEVICES
 
 pytestmark = pytest.mark.opt_in

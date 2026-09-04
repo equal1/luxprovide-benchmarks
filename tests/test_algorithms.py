@@ -1,16 +1,16 @@
 import eq1val
 import matplotlib.pyplot as plt
 import pytest
-from eq1bench.algorithms.circuit_benchmark import (
+from mqt.bench import BenchmarkLevel, get_benchmark
+from qiskit import QuantumCircuit
+
+from benchmarks.circuit_benchmark import (
     CircuitBenchmark,
     align_to_ideal,
     classical_fidelity,
     ideal_distribution,
     plot_measured_vs_ideal,
 )
-from mqt.bench import BenchmarkLevel, get_benchmark
-from qiskit import QuantumCircuit
-
 from circuits import CIRCUITS, load
 from config import DEVICES
 
